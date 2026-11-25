@@ -68,6 +68,29 @@ jobs:
           cd "$PROJECT_DIR"
           flutter test
 
+      - name: Set Android compile SDK
+        run: |
+          cd "$PROJECT_DIR"
+          find android -name build.gradle -o -name build.gradle.kts
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          for p in Path("android").rglob("build.gradle*"):
+              s = p.read_text()
+              s = re.sub(
+                  r'compileSdk\s*=\s*\d+',
+                  'compileSdk = 36',
+                  s
+              )
+              s = re.sub(
+                  r'compileSdk\s+\d+',
+                  'compileSdk 36',
+                  s
+              )
+              p.write_text(s)
+          PY
+
       - name: Build APK
         run: |
           cd "$PROJECT_DIR"

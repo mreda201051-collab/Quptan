@@ -33,7 +33,7 @@ jobs:
       - name: Extract Android project
         run: |
           mkdir -p extracted
-          unzip -o QUPTAN_WE_EGYPT_PRO_HTML_ANDROID_v1.zip -d extracted
+          unzip -o QUPTAN_WE_EGYPT_PRO_HTML_ANDROID_v2.zip -d extracted
           test -f extracted/pubspec.yaml
           test -f extracted/assets/index.html
           test -f extracted/lib/main.dart

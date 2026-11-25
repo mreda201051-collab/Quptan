@@ -1,11 +1,13 @@
-
-name: Build QUPTAN WE EGYPT PRO APK
+name: Build QUPTAN HTML Android APK
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -25,126 +27,66 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          cache: true
 
-      - name: Extract project
+      - name: Extract new HTML Android project
         run: |
           mkdir -p extracted
-          unzip -o QUPTAN_WE_EGYPT_PRO_v0.4.1-dev.zip -d extracted
-          PROJECT_DIR=$(find extracted -name pubspec.yaml -print -quit | xargs dirname)
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "Flutter project not found"
-            exit 1
-          fi
-          echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
+          unzip -o QUPTAN_WE_EGYPT_PRO_HTML_ANDROID_v1.zip -d extracted
+          test -f extracted/pubspec.yaml
+          echo "PROJECT_DIR=extracted" >> $GITHUB_ENV
 
-      - name: Prepare Android
+      - name: Generate Android project
         run: |
           cd "$PROJECT_DIR"
-          if [ ! -d android ]; then
-            flutter create . --platforms=android --org com.quptan.weegypt
-          fi
+          flutter create . --platforms=android --org com.quptan.weegypt
 
-      - name: Install Android SDK 36
+      - name: Configure Android
         run: |
-          SDKMANAGER=$(command -v sdkmanager || find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}" -name sdkmanager -type f | head -n 1)
-          if [ -z "$SDKMANAGER" ]; then
-            echo "sdkmanager not found"
-            exit 1
-          fi
-          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
-          "$SDKMANAGER" "platforms;android-36"
+          cd "$PROJECT_DIR"
+          sed -i 's/android:label="quptan_we_egypt_pro"/android:label="QUPTAN WE EGYPT PRO"/' android/app/src/main/AndroidManifest.xml
 
       - name: Install dependencies
         run: |
           cd "$PROJECT_DIR"
           flutter pub get
 
-      - name: Fix Excel export naming conflict
+      - name: Set compile SDK 36
         run: |
           cd "$PROJECT_DIR"
           python3 - <<'PY'
           from pathlib import Path
           import re
 
-          p = Path("lib/ui/home_screen.dart")
-          s = p.read_text()
-          s = re.sub(r'\bnum\(', 'numCell(', s)
-          p.write_text(s)
-          print("Excel export naming checked")
-          PY
+          roots = [Path("android"), Path.home() / ".pub-cache"]
+          pattern = re.compile(
+              r'(?m)^([ \t]*compileSdk(?:Version)?[ \t]*(?:=[ \t]*)?)(?:flutter\.compileSdkVersion|[0-9]+)'
+          )
 
-      - name: Remove obsolete widget test
-        run: |
-          cd "$PROJECT_DIR"
-          rm -f test/widget_test.dart
+          for root in roots:
+              if not root.exists():
+                  continue
+              for p in root.rglob("*"):
+                  if p.is_file() and p.name in ("build.gradle", "build.gradle.kts"):
+                      try:
+                          old = p.read_text()
+                          new = pattern.sub(lambda m: m.group(1) + "36", old)
+                          if new != old:
+                              p.write_text(new)
+                              print("Updated:", p)
+                      except Exception:
+                          pass
+          PY
 
       - name: Run tests
         run: |
           cd "$PROJECT_DIR"
           flutter test
 
-      - name: Force compile SDK 36 for app and all plugins
+      - name: Analyze project
         run: |
           cd "$PROJECT_DIR"
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          roots = [
-              Path("android"),
-              Path.home() / ".pub-cache"
-          ]
-
-          pattern = re.compile(
-              r'(?m)^([ \t]*compileSdk(?:Version)?[ \t]*(?:=[ \t]*)?)(?:flutter\.compileSdkVersion|[0-9]+)'
-          )
-
-          changed = []
-          file_picker_found = False
-
-          for root in roots:
-              if not root.exists():
-                  continue
-
-              for p in root.rglob("*"):
-                  if not p.is_file():
-                      continue
-                  if p.name not in ("build.gradle", "build.gradle.kts"):
-                      continue
-
-                  if "file_picker" in str(p):
-                      file_picker_found = True
-
-                  try:
-                      content = p.read_text()
-                  except Exception:
-                      continue
-
-                  updated, count = pattern.subn(
-                      lambda m: m.group(1) + "36",
-                      content
-                  )
-
-                  if count:
-                      p.write_text(updated)
-                      changed.append(str(p))
-                      print("UPDATED:", p)
-
-          if not changed:
-              raise SystemExit("ERROR: No compileSdk settings were updated")
-
-          if not file_picker_found:
-              raise SystemExit("ERROR: file_picker Gradle file was not found")
-
-          print("\nFiles updated:", len(changed))
-          print("Android compileSdk adjustment completed.")
-          PY
-
-      - name: Verify compile SDK settings
-        run: |
-          cd "$PROJECT_DIR"
-          echo "Checking Android Gradle compileSdk settings..."
-          grep -R -n -E 'compileSdk(Version)?[ =]+(36|flutter\.compileSdkVersion)' android "$HOME/.pub-cache/hosted/pub.dev"/*/android 2>/dev/null || true
+          flutter analyze
 
       - name: Build APK
         run: |
@@ -154,5 +96,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: QUPTAN-WE-EGYPT-PRO-APK
-          path: ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/app-release.apk
+          name: QUPTAN-HTML-ANDROID-APK
+          path: extracted/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 30

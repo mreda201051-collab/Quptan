@@ -1,0 +1,71 @@
+
+name: Build QUPTAN WE EGYPT PRO APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'QUPTAN_WE_EGYPT_PRO_v0.4.1-dev.zip'
+      - '.github/workflows/android-release.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Extract project
+        run: |
+          unzip -q QUPTAN_WE_EGYPT_PRO_v0.4.1-dev.zip -d extracted
+          PROJECT_FILE=$(find extracted -name pubspec.yaml -print -quit)
+          if [ -z "$PROJECT_FILE" ]; then
+            echo "ERROR: pubspec.yaml not found"
+            exit 1
+          fi
+          echo "PROJECT_DIR=$(dirname "$PROJECT_FILE")" >> "$GITHUB_ENV"
+
+      - name: Prepare Android project
+        run: |
+          cd "$PROJECT_DIR"
+          if [ ! -d android ]; then
+            flutter create . --platforms=android --org com.quptan.weegypt
+          fi
+
+      - name: Install dependencies
+        run: |
+          cd "$PROJECT_DIR"
+          flutter pub get
+
+      - name: Run tests
+        run: |
+          cd "$PROJECT_DIR"
+          flutter test
+
+      - name: Build release APK
+        run: |
+          cd "$PROJECT_DIR"
+          flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: QUPTAN-WE-EGYPT-PRO-APK
+          path: ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error

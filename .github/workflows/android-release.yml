@@ -1,3 +1,4 @@
+
 name: Build QUPTAN HTML Android APK
 
 on:
@@ -29,17 +30,23 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Extract new HTML Android project
+      - name: Extract Android project
         run: |
           mkdir -p extracted
           unzip -o QUPTAN_WE_EGYPT_PRO_HTML_ANDROID_v1.zip -d extracted
           test -f extracted/pubspec.yaml
+          test -f extracted/assets/index.html
+          test -f extracted/lib/main.dart
           echo "PROJECT_DIR=extracted" >> $GITHUB_ENV
 
       - name: Generate Android project
         run: |
           cd "$PROJECT_DIR"
           flutter create . --platforms=android --org com.quptan.weegypt
+
+      - name: Remove incompatible default widget test
+        run: |
+          rm -f "$PROJECT_DIR/test/widget_test.dart"
 
       - name: Configure Android
         run: |
@@ -78,7 +85,7 @@ jobs:
                           pass
           PY
 
-      - name: Run tests
+      - name: Run project tests
         run: |
           cd "$PROJECT_DIR"
           flutter test
@@ -92,6 +99,11 @@ jobs:
         run: |
           cd "$PROJECT_DIR"
           flutter build apk --release
+
+      - name: Verify APK
+        run: |
+          test -f "$PROJECT_DIR/build/app/outputs/flutter-apk/app-release.apk"
+          ls -lh "$PROJECT_DIR/build/app/outputs/flutter-apk/app-release.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

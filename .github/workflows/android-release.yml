@@ -41,6 +41,25 @@ jobs:
           fi
           echo "PROJECT_DIR=$(dirname "$PROJECT_FILE")" >> "$GITHUB_ENV"
 
+      - name: Fix Dart helper name and obsolete test
+        run: |
+          cd "$PROJECT_DIR"
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path("lib/ui/home_screen.dart")
+          s = p.read_text()
+          s = re.sub(r'\bnum(?=\s*\()', 'numCell', s)
+          p.write_text(s)
+          print("Dart helper name corrected")
+
+          obsolete_test = Path("test/widget_test.dart")
+          if obsolete_test.exists():
+              obsolete_test.unlink()
+              print("Removed obsolete generated widget test")
+          PY
+
       - name: Prepare Android project
         run: |
           cd "$PROJECT_DIR"

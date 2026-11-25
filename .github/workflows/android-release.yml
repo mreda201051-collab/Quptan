@@ -70,7 +70,7 @@ jobs:
           s = p.read_text()
           s = re.sub(r'\bnum\(', 'numCell(', s)
           p.write_text(s)
-          print("Excel export naming fixed")
+          print("Excel export naming checked")
           PY
 
       - name: Remove obsolete widget test
@@ -83,37 +83,68 @@ jobs:
           cd "$PROJECT_DIR"
           flutter test
 
-      - name: Set Android compile SDK 36
+      - name: Force compile SDK 36 for app and all plugins
         run: |
           cd "$PROJECT_DIR"
           python3 - <<'PY'
           from pathlib import Path
           import re
 
-          files = list(Path("android/app").glob("build.gradle*"))
+          roots = [
+              Path("android"),
+              Path.home() / ".pub-cache"
+          ]
 
-          if not files:
-              raise SystemExit("Android app Gradle file not found")
+          pattern = re.compile(
+              r'(?m)^([ \t]*compileSdk(?:Version)?[ \t]*(?:=[ \t]*)?)(?:flutter\.compileSdkVersion|[0-9]+)'
+          )
 
-          updated = False
+          changed = []
+          file_picker_found = False
 
-          for p in files:
-              s = p.read_text()
-              s, count = re.subn(
-                  r'(?m)^(\s*compileSdk(?:Version)?\s*(?:=\s*)?)(?:flutter\.compileSdkVersion|\d+)',
-                  r'\g<1>36',
-                  s
-              )
-              if count:
-                  updated = True
-              p.write_text(s)
-              print("Checked:", p)
+          for root in roots:
+              if not root.exists():
+                  continue
 
-          if not updated:
-              raise SystemExit("Could not update compileSdk to 36")
+              for p in root.rglob("*"):
+                  if not p.is_file():
+                      continue
+                  if p.name not in ("build.gradle", "build.gradle.kts"):
+                      continue
 
-          print("Android compileSdk set to 36")
+                  if "file_picker" in str(p):
+                      file_picker_found = True
+
+                  try:
+                      content = p.read_text()
+                  except Exception:
+                      continue
+
+                  updated, count = pattern.subn(
+                      lambda m: m.group(1) + "36",
+                      content
+                  )
+
+                  if count:
+                      p.write_text(updated)
+                      changed.append(str(p))
+                      print("UPDATED:", p)
+
+          if not changed:
+              raise SystemExit("ERROR: No compileSdk settings were updated")
+
+          if not file_picker_found:
+              raise SystemExit("ERROR: file_picker Gradle file was not found")
+
+          print("\nFiles updated:", len(changed))
+          print("Android compileSdk adjustment completed.")
           PY
+
+      - name: Verify compile SDK settings
+        run: |
+          cd "$PROJECT_DIR"
+          echo "Checking Android Gradle compileSdk settings..."
+          grep -R -n -E 'compileSdk(Version)?[ =]+(36|flutter\.compileSdkVersion)' android "$HOME/.pub-cache/hosted/pub.dev"/*/android 2>/dev/null || true
 
       - name: Build APK
         run: |

@@ -45,6 +45,19 @@ jobs:
           cd "$PROJECT_DIR"
           flutter pub get
 
+      - name: Fix Excel export naming conflict
+        run: |
+          cd "$PROJECT_DIR"
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path("lib/ui/home_screen.dart")
+          s = p.read_text()
+          s = re.sub(r'\bnum\(', 'numCell(', s)
+          p.write_text(s)
+          print("Excel export naming fixed")
+          PY
+
       - name: Remove obsolete widget test
         run: |
           cd "$PROJECT_DIR"

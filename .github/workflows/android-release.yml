@@ -31,6 +31,10 @@ jobs:
           mkdir -p extracted
           unzip -o QUPTAN_WE_EGYPT_PRO_v0.4.1-dev.zip -d extracted
           PROJECT_DIR=$(find extracted -name pubspec.yaml -print -quit | xargs dirname)
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "Flutter project not found"
+            exit 1
+          fi
           echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
 
       - name: Prepare Android
@@ -39,6 +43,16 @@ jobs:
           if [ ! -d android ]; then
             flutter create . --platforms=android --org com.quptan.weegypt
           fi
+
+      - name: Install Android SDK 36
+        run: |
+          SDKMANAGER=$(command -v sdkmanager || find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}" -name sdkmanager -type f | head -n 1)
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager not found"
+            exit 1
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          "$SDKMANAGER" "platforms;android-36"
 
       - name: Install dependencies
         run: |
@@ -51,6 +65,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
+
           p = Path("lib/ui/home_screen.dart")
           s = p.read_text()
           s = re.sub(r'\bnum\(', 'numCell(', s)
@@ -68,27 +83,36 @@ jobs:
           cd "$PROJECT_DIR"
           flutter test
 
-      - name: Set Android compile SDK
+      - name: Set Android compile SDK 36
         run: |
           cd "$PROJECT_DIR"
-          find android -name build.gradle -o -name build.gradle.kts
           python3 - <<'PY'
           from pathlib import Path
           import re
 
-          for p in Path("android").rglob("build.gradle*"):
+          files = list(Path("android/app").glob("build.gradle*"))
+
+          if not files:
+              raise SystemExit("Android app Gradle file not found")
+
+          updated = False
+
+          for p in files:
               s = p.read_text()
-              s = re.sub(
-                  r'compileSdk\s*=\s*\d+',
-                  'compileSdk = 36',
+              s, count = re.subn(
+                  r'(?m)^(\s*compileSdk(?:Version)?\s*(?:=\s*)?)(?:flutter\.compileSdkVersion|\d+)',
+                  r'\g<1>36',
                   s
               )
-              s = re.sub(
-                  r'compileSdk\s+\d+',
-                  'compileSdk 36',
-                  s
-              )
+              if count:
+                  updated = True
               p.write_text(s)
+              print("Checked:", p)
+
+          if not updated:
+              raise SystemExit("Could not update compileSdk to 36")
+
+          print("Android compileSdk set to 36")
           PY
 
       - name: Build APK

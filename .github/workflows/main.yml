@@ -19,7 +19,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -32,7 +32,7 @@ jobs:
           ZIP_FILE="QUPTAN_PRO_source_for_APK_test.zip"
 
           if [ ! -f "$ZIP_FILE" ]; then
-            echo "Project ZIP file not found: $ZIP_FILE"
+            echo "Project ZIP file not found"
             ls -la
             exit 1
           fi
@@ -43,7 +43,7 @@ jobs:
           PROJECT_DIR=$(find "$RUNNER_TEMP/quptan_source" -name pubspec.yaml -print -quit | xargs dirname)
 
           if [ -z "$PROJECT_DIR" ] || [ ! -f "$PROJECT_DIR/pubspec.yaml" ]; then
-            echo "pubspec.yaml was not found inside the ZIP."
+            echo "pubspec.yaml not found"
             exit 1
           fi
 

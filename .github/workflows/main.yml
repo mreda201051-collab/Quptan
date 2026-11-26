@@ -1,0 +1,75 @@
+
+name: Build QUPTAN PRO APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Extract project ZIP
+        run: |
+          ZIP_FILE="QUPTAN_PRO_source_for_APK_test.zip"
+
+          if [ ! -f "$ZIP_FILE" ]; then
+            echo "Project ZIP file not found: $ZIP_FILE"
+            ls -la
+            exit 1
+          fi
+
+          mkdir -p "$RUNNER_TEMP/quptan_source"
+          unzip -q "$ZIP_FILE" -d "$RUNNER_TEMP/quptan_source"
+
+          PROJECT_DIR=$(find "$RUNNER_TEMP/quptan_source" -name pubspec.yaml -print -quit | xargs dirname)
+
+          if [ -z "$PROJECT_DIR" ] || [ ! -f "$PROJECT_DIR/pubspec.yaml" ]; then
+            echo "pubspec.yaml was not found inside the ZIP."
+            exit 1
+          fi
+
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+      - name: Prepare Android project
+        run: |
+          cd "$PROJECT_DIR"
+
+          if [ ! -d android ]; then
+            flutter create --platforms=android .
+          fi
+
+      - name: Get Flutter packages
+        run: |
+          cd "$PROJECT_DIR"
+          flutter pub get
+
+      - name: Build release APK
+        run: |
+          cd "$PROJECT_DIR"
+          flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: QUPTAN-PRO-APK
+          path: ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error

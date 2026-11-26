@@ -15,6 +15,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Extract project ZIP
+        run: |
+          unzip -o QUPTAN_WE_EGYPT_PRO_PURPLE_GOLD_UI.zip -d .
+          test -f quptan_src/pubspec.yaml
+          test -f quptan_src/lib/main.dart
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -26,6 +32,10 @@ jobs:
         with:
           channel: stable
           cache: true
+
+      - name: Prepare Android project
+        working-directory: quptan_src
+        run: flutter create --platforms=android --project-name quptan_we_egypt_pro .
 
       - name: Install dependencies
         working-directory: quptan_src

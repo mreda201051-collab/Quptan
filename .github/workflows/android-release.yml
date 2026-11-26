@@ -93,7 +93,13 @@ jobs:
       - name: Analyze project
         run: |
           cd "$PROJECT_DIR"
-          flutter analyze
+          flutter analyze > analyze.log 2>&1 || true
+          cat analyze.log
+          if grep -Eq 'error •' analyze.log; then
+            echo "Dart errors found"
+            exit 1
+          fi
+          echo "No Dart errors found"
 
       - name: Build APK
         run: |

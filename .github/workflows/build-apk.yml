@@ -1,4 +1,3 @@
-
 name: Build QUPTAN WE EGYPT PRO APK
 
 on:
@@ -12,12 +11,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract project ZIP
+      - name: Check project ZIP
         run: |
-          unzip -o QUPTAN_WE_EGYPT_PRO_PURPLE_GOLD_UI.zip -d .
+          test -f QUPTAN_WE_EGYPT_PRO_NEW_PROJECT.zip
+
+      - name: Extract new project
+        run: |
+          unzip -o QUPTAN_WE_EGYPT_PRO_NEW_PROJECT.zip -d .
           test -f quptan_src/pubspec.yaml
           test -f quptan_src/lib/main.dart
 
@@ -33,11 +36,12 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Prepare Android project
+      - name: Create Android project files
         working-directory: quptan_src
-        run: flutter create --platforms=android --project-name quptan_we_egypt_pro .
+        run: |
+          flutter create --platforms=android --project-name quptan_we_egypt_pro .
 
-      - name: Install dependencies
+      - name: Install packages
         working-directory: quptan_src
         run: flutter pub get
 
@@ -48,5 +52,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: QUPTAN-WE-EGYPT-PRO-APK
+          name: QUPTAN-PRO-APK
           path: quptan_src/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error

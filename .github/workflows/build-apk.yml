@@ -1,3 +1,4 @@
+
 name: Build QUPTAN WE EGYPT PRO APK
 
 on:
@@ -11,18 +12,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Check project ZIP
-        run: |
-          test -f QUPTAN_WE_EGYPT_PRO_NEW_PROJECT.zip
 
       - name: Extract new project
         run: |
-          unzip -o QUPTAN_WE_EGYPT_PRO_NEW_PROJECT.zip -d .
-          test -f quptan_src/pubspec.yaml
-          test -f quptan_src/lib/main.dart
+          mkdir -p extracted
+          unzip -o QUPTAN_WE_EGYPT_PRO_ROYAL_PURPLE_GOLD_NEW_PROJECT.zip -d extracted
+          test -f extracted/quptan_src/pubspec.yaml
+          test -f extracted/quptan_src/lib/main.dart
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -36,22 +34,35 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Create Android project files
-        working-directory: quptan_src
-        run: |
-          flutter create --platforms=android --project-name quptan_we_egypt_pro .
+      - name: Generate Android project
+        working-directory: extracted/quptan_src
+        run: flutter create --platforms=android --project-name quptan_we_egypt_pro .
 
-      - name: Install packages
-        working-directory: quptan_src
+      - name: Install dependencies
+        working-directory: extracted/quptan_src
         run: flutter pub get
 
+      - name: Generate app icon and splash
+        working-directory: extracted/quptan_src
+        run: |
+          dart run flutter_launcher_icons
+          dart run flutter_native_splash:create
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android/app/src/main/AndroidManifest.xml')
+          if p.exists():
+              s = p.read_text()
+              s = s.replace('android:label="quptan_we_egypt_pro"', 'android:label="القبطان برو - QUPTAN PRO"')
+              p.write_text(s)
+          PY
+
       - name: Build APK
-        working-directory: quptan_src
+        working-directory: extracted/quptan_src
         run: flutter build apk --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: QUPTAN-PRO-APK
-          path: quptan_src/build/app/outputs/flutter-apk/app-release.apk
+          name: QUPTAN-WE-EGYPT-PRO-APK
+          path: extracted/quptan_src/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error

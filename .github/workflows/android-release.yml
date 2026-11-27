@@ -1,11 +1,11 @@
 
-name: Build QUPTAN HTML Android APK
+name: Build QUPTAN WE EGYPT PRO APK
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - main
+      - quptan-navy-gold-final
 
 permissions:
   contents: read
@@ -30,91 +30,56 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Extract Android project
+      - name: Prepare Flutter project
         run: |
-          mkdir -p extracted
-          unzip -o QUPTAN_WE_EGYPT_PRO_HTML_ANDROID_v2.zip -d extracted
-          test -f extracted/pubspec.yaml
-          test -f extracted/assets/index.html
-          test -f extracted/lib/main.dart
-          echo "PROJECT_DIR=extracted" >> $GITHUB_ENV
+          mkdir -p assets lib
+          test -f index.html
+          test -f main.dart
+          test -f pubspec.yaml
+          cp index.html assets/index.html
+          cp main.dart lib/main.dart
 
       - name: Generate Android project
-        run: |
-          cd "$PROJECT_DIR"
-          flutter create . --platforms=android --org com.quptan.weegypt
+        run: flutter create --platforms=android --org com.quptan.weegypt .
 
-      - name: Remove incompatible default widget test
+      - name: Configure application
         run: |
-          rm -f "$PROJECT_DIR/test/widget_test.dart"
-
-      - name: Configure Android
-        run: |
-          cd "$PROJECT_DIR"
-          sed -i 's/android:label="quptan_we_egypt_pro"/android:label="QUPTAN WE EGYPT PRO"/' android/app/src/main/AndroidManifest.xml
-
-      - name: Install dependencies
-        run: |
-          cd "$PROJECT_DIR"
-          flutter pub get
-
-      - name: Set compile SDK 36
-        run: |
-          cd "$PROJECT_DIR"
+          rm -f test/widget_test.dart
           python3 - <<'PY'
           from pathlib import Path
-          import re
-
-          roots = [Path("android"), Path.home() / ".pub-cache"]
-          pattern = re.compile(
-              r'(?m)^([ \t]*compileSdk(?:Version)?[ \t]*(?:=[ \t]*)?)(?:flutter\.compileSdkVersion|[0-9]+)'
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text()
+          s = s.replace(
+              'android:label="quptan_we_egypt_pro"',
+              'android:label="القبطان برو - QUPTAN PRO"'
           )
-
-          for root in roots:
-              if not root.exists():
-                  continue
-              for p in root.rglob("*"):
-                  if p.is_file() and p.name in ("build.gradle", "build.gradle.kts"):
-                      try:
-                          old = p.read_text()
-                          new = pattern.sub(lambda m: m.group(1) + "36", old)
-                          if new != old:
-                              p.write_text(new)
-                              print("Updated:", p)
-                      except Exception:
-                          pass
+          p.write_text(s)
           PY
 
-      - name: Run project tests
-        run: |
-          cd "$PROJECT_DIR"
-          flutter test
+      - name: Install dependencies
+        run: flutter pub get
 
       - name: Analyze project
         run: |
-          cd "$PROJECT_DIR"
           flutter analyze > analyze.log 2>&1 || true
           cat analyze.log
           if grep -Eq 'error •' analyze.log; then
             echo "Dart errors found"
             exit 1
           fi
-          echo "No Dart errors found"
 
       - name: Build APK
-        run: |
-          cd "$PROJECT_DIR"
-          flutter build apk --release
+        run: flutter build apk --release
 
       - name: Verify APK
         run: |
-          test -f "$PROJECT_DIR/build/app/outputs/flutter-apk/app-release.apk"
-          ls -lh "$PROJECT_DIR/build/app/outputs/flutter-apk/app-release.apk"
+          test -f build/app/outputs/flutter-apk/app-release.apk
+          ls -lh build/app/outputs/flutter-apk/app-release.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: QUPTAN-HTML-ANDROID-APK
-          path: extracted/build/app/outputs/flutter-apk/app-release.apk
+          name: QUPTAN-WE-EGYPT-PRO-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           retention-days: 30

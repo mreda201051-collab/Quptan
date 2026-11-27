@@ -7,7 +7,7 @@ on:
     branches:
       - native-flutter-rebuild
     paths:
-      - 'QUPTAN_WE_EGYPT_PRO_NATIVE_V2_SOURCE.zip'
+      - 'QUPTAN_WE_EGYPT_PRO_NATIVE_V2_SOURCE(1).zip'
       - '.github/workflows/native-flutter-build.yml'
 
 permissions:

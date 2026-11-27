@@ -1,3 +1,4 @@
+
 name: Build QUPTAN WE EGYPT PRO Native APK
 
 on:
@@ -16,6 +17,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,38 +34,39 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Extract native Flutter source
+      - name: Extract Flutter project
+        shell: bash
         run: |
-          test -f QUPTAN_WE_EGYPT_PRO_NATIVE_V2_SOURCE.zip
+          set -euxo pipefail
           mkdir -p native_build
-          unzip -q QUPTAN_WE_EGYPT_PRO_NATIVE_V2_SOURCE.zip -d native_build
-          test -f native_build/QUPTAN_WE_EGYPT_PRO_V2/pubspec.yaml
-          test -f native_build/QUPTAN_WE_EGYPT_PRO_V2/lib/main.dart
+          unzip -o QUPTAN_WE_EGYPT_PRO_NATIVE_V2_SOURCE.zip -d native_build
+          PROJECT_DIR="$(dirname "$(find native_build -type f -name pubspec.yaml -print -quit)")"
+          test -f "$PROJECT_DIR/lib/main.dart"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Generate Android platform project
-        working-directory: native_build/QUPTAN_WE_EGYPT_PRO_V2
-        run: flutter create --platforms=android --org com.quptan.weegypt .
+      - name: Generate Android project
+        run: flutter create --platforms=android --org com.quptan.weegypt "$PROJECT_DIR"
 
-      - name: Resolve dependencies
-        working-directory: native_build/QUPTAN_WE_EGYPT_PRO_V2
+      - name: Get dependencies
+        working-directory: ${{ env.PROJECT_DIR }}
         run: flutter pub get
 
-      - name: Analyze Dart code
-        working-directory: native_build/QUPTAN_WE_EGYPT_PRO_V2
+      - name: Analyze code
+        working-directory: ${{ env.PROJECT_DIR }}
         run: flutter analyze
 
       - name: Run tests
-        working-directory: native_build/QUPTAN_WE_EGYPT_PRO_V2
+        working-directory: ${{ env.PROJECT_DIR }}
         run: flutter test
 
-      - name: Build release APK
-        working-directory: native_build/QUPTAN_WE_EGYPT_PRO_V2
+      - name: Build APK
+        working-directory: ${{ env.PROJECT_DIR }}
         run: flutter build apk --release
 
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: QUPTAN-WE-EGYPT-PRO-NATIVE-APK
-          path: native_build/QUPTAN_WE_EGYPT_PRO_V2/build/app/outputs/flutter-apk/app-release.apk
+          path: ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           retention-days: 30

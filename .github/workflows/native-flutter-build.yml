@@ -1,0 +1,69 @@
+name: Build QUPTAN WE EGYPT PRO Native APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - native-flutter-rebuild
+    paths:
+      - 'QUPTAN_WE_EGYPT_PRO_NATIVE_V2_SOURCE.zip'
+      - '.github/workflows/native-flutter-build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Extract native Flutter source
+        run: |
+          test -f QUPTAN_WE_EGYPT_PRO_NATIVE_V2_SOURCE.zip
+          mkdir -p native_build
+          unzip -q QUPTAN_WE_EGYPT_PRO_NATIVE_V2_SOURCE.zip -d native_build
+          test -f native_build/QUPTAN_WE_EGYPT_PRO_V2/pubspec.yaml
+          test -f native_build/QUPTAN_WE_EGYPT_PRO_V2/lib/main.dart
+
+      - name: Generate Android platform project
+        working-directory: native_build/QUPTAN_WE_EGYPT_PRO_V2
+        run: flutter create --platforms=android --org com.quptan.weegypt .
+
+      - name: Resolve dependencies
+        working-directory: native_build/QUPTAN_WE_EGYPT_PRO_V2
+        run: flutter pub get
+
+      - name: Analyze Dart code
+        working-directory: native_build/QUPTAN_WE_EGYPT_PRO_V2
+        run: flutter analyze
+
+      - name: Run tests
+        working-directory: native_build/QUPTAN_WE_EGYPT_PRO_V2
+        run: flutter test
+
+      - name: Build release APK
+        working-directory: native_build/QUPTAN_WE_EGYPT_PRO_V2
+        run: flutter build apk --release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: QUPTAN-WE-EGYPT-PRO-NATIVE-APK
+          path: native_build/QUPTAN_WE_EGYPT_PRO_V2/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 30

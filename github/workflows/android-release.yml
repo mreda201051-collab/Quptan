@@ -1,0 +1,59 @@
+name: Build QUPTAN WE EGYPT PRO APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract project ZIP
+        run: |
+          unzip -q QUPTAN_WE_EGYPT_PRO_NAVY_GOLD_ICON_FINAL_SOURCE.zip -d source
+          cp -a source/QUPTAN_WE_EGYPT_PRO_V2/. .
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Android project
+        run: flutter create --platforms=android --project-name quptan_we_egypt_pro .
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate app icon and splash
+        run: |
+          dart run flutter_launcher_icons
+          dart run flutter_native_splash:create
+
+      - name: Analyze Dart code
+        run: flutter analyze
+        continue-on-error: true
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: QUPTAN-WE-EGYPT-PRO-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error

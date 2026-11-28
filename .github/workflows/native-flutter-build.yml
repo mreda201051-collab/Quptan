@@ -7,7 +7,7 @@ on:
     branches:
       - native-flutter-rebuild
     paths:
-      - 'QUPTAN_WE_EGYPT_PRO_NATIVE_V2_SOURCE(1).zip'
+      - 'QUPTAN_WE_EGYPT_PRO_NATIVE_V2_SOURCE_FIXED.zip'
       - '.github/workflows/native-flutter-build.yml'
 
 permissions:
@@ -39,7 +39,7 @@ jobs:
         run: |
           set -euxo pipefail
           mkdir -p native_build
-          unzip -o "QUPTAN_WE_EGYPT_PRO_NATIVE_V2_SOURCE(1).zip" -d native_build
+          unzip -o "QUPTAN_WE_EGYPT_PRO_NATIVE_V2_SOURCE_FIXED.zip" -d native_build
           PROJECT_DIR="$(dirname "$(find native_build -type f -name pubspec.yaml -print -quit)")"
           test -f "$PROJECT_DIR/lib/main.dart"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
